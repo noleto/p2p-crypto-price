@@ -59,6 +59,11 @@ The `produce` command fetches cryptocurrency prices and broadcasts them to the p
 #### Example
 
 To produce price data for Bitcoin (`BTC`), updated every 30 seconds:
+/!\ Create a conf file in your $HOME named: "$HOME/.p2p_crypto_price.yaml"
+
+```yaml
+apiKey: <Coinmarket API KEY>
+```
 
 ```sh
 ./p2p-crypto-price produce -s BTC -q 30
