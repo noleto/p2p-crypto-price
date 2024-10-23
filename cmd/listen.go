@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"context"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/spf13/cobra"
 	"log"
 )
@@ -14,6 +16,10 @@ func listenRun(cmd *cobra.Command, args []string) {
 
 	topic := joinTopic(err, ctx, node)
 
+	listenCryptoFeed(err, topic, ctx, node)
+}
+
+func listenCryptoFeed(err error, topic *pubsub.Topic, ctx context.Context, node host.Host) {
 	sub, err := topic.Subscribe()
 	if err != nil {
 		log.Fatalf("failed to subscribe to topic: %v", err)

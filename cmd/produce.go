@@ -78,6 +78,10 @@ func produceRun(cmd *cobra.Command, args []string) {
 
 	topic := joinTopic(err, ctx, node)
 
+	emitCryptoFeed(ctx, topic)
+}
+
+func emitCryptoFeed(ctx context.Context, topic *pubsub.Topic) {
 	ticker := time.NewTicker(time.Duration(quoteRefreshSecs) * time.Second)
 	defer ticker.Stop()
 

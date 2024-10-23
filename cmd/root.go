@@ -12,15 +12,15 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"golang.org/x/net/context"
-	"sync"
-
 	"log"
 	"os"
+	"sync"
 )
 
 const (
-	apiURL    = "https://pro-api.coinmarketcap.com/v2/cryptocurrency/quotes/latest"
-	topicName = "crypto-usd-price"
+	apiURL          = "https://pro-api.coinmarketcap.com/v2/cryptocurrency/quotes/latest"
+	topicName       = "crypto-usd-price"
+	nsAdvertiseName = "p2p-crypto-feed"
 )
 
 var cfgFile string
@@ -82,7 +82,8 @@ func createNode(ctx context.Context) (host.Host, error) {
 		log.Fatalf("failed to create libp2p node: %v", err)
 	}
 
-	go discoverPeers(ctx, node)
+	routingDiscovery := announcePeer(ctx, node)
+	go discoverPeers(ctx, node, routingDiscovery)
 
 	// print the node's PeerInfo in multiaddr format
 	peerInfo := peer.AddrInfo{
@@ -126,31 +127,34 @@ func initDHT(ctx context.Context, h host.Host) *dht.IpfsDHT {
 	return kademliaDHT
 }
 
-func discoverPeers(ctx context.Context, h host.Host) {
-	kademliaDHT := initDHT(ctx, h)
-	routingDiscovery := drouting.NewRoutingDiscovery(kademliaDHT)
-	dutil.Advertise(ctx, routingDiscovery, topicName)
-
+func discoverPeers(ctx context.Context, node host.Host, discovery *drouting.RoutingDiscovery) {
 	// Look for others who have announced and attempt to connect to them
 	anyConnected := false
 	for !anyConnected {
 		fmt.Println("Searching for peers...")
-		peerChan, err := routingDiscovery.FindPeers(ctx, topicName)
+		peerChan, err := discovery.FindPeers(ctx, nsAdvertiseName)
 		if err != nil {
 			panic(err)
 		}
-		for p := range peerChan {
-			if p.ID == h.ID() {
+		for peer := range peerChan {
+			if peer.ID == node.ID() {
 				continue // No self connection
 			}
-			err := h.Connect(ctx, p)
+			err := node.Connect(ctx, peer)
 			if err != nil {
-				//fmt.Printf("Failed connecting to %s, error: %s\n", p.ID, err)
+				//fmt.Printf("Failed connecting to %s, error: %s\n", peer.ID, err)
 			} else {
-				fmt.Println("Connected to:", p.ID)
+				fmt.Println("Connected to:", peer.ID)
 				anyConnected = true
 			}
 		}
 	}
 	fmt.Println("Peer discovery complete")
+}
+
+func announcePeer(ctx context.Context, node host.Host) *drouting.RoutingDiscovery {
+	kademliaDHT := initDHT(ctx, node)
+	routingDiscovery := drouting.NewRoutingDiscovery(kademliaDHT)
+	dutil.Advertise(ctx, routingDiscovery, nsAdvertiseName)
+	return routingDiscovery
 }
